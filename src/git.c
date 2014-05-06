@@ -14,12 +14,12 @@
 #include "git.h"
 #include "capture.h"
 #include "common.h"
-
+#include <unistd.h>
 
 static int
 git_probe(vccontext_t *context)
 {
-    return isdir(".git");
+    return isdir(".git") || isfile (".git");
 }
 
 static result_t*
@@ -28,7 +28,27 @@ git_get_info(vccontext_t *context)
     result_t *result = init_result();
     char buf[1024];
 
-    if (!read_first_line(".git/HEAD", buf, 1024)) {
+    if (isfile(".git") && read_first_line(".git", buf, 1024)) {
+        debug(".git is a regular file, assuming a modern git submodule");
+        if (strncmp(buf, "gitdir: ", 8) != 0) {
+            debug("modern git submodule .git file does not begin with 'gitdir: '");
+            goto err;
+        }
+        if (strlen(buf) < 9) {
+            debug("modern git submodule .git file is blank after 'gitdir: '");
+            goto err;
+        }
+        const char * relative_path = buf + 8;
+        if (chdir(relative_path) != 0) {
+            debug("unable to chdir to modern git submodule relative path: %s", relative_path);
+            goto err;
+        }
+    } else if (chdir (".git") != 0) {
+        debug ("unable to chdir into .git'");
+        goto err;
+    }
+
+    if (!read_first_line("HEAD", buf, 1024)) {
         debug("unable to read .git/HEAD: assuming not a git repo");
         goto err;
     }
@@ -52,7 +72,7 @@ git_get_info(vccontext_t *context)
         }
         if (context->options->show_revision && found_branch) {
             char buf[1024];
-            char filename[1024] = ".git/refs/heads/";
+            char filename[1024] = "refs/heads/";
             int nchars = sizeof(filename) - strlen(filename) - 1;
             strncat(filename, result->branch, nchars);
             if (read_first_line(filename, buf, 1024)) {
