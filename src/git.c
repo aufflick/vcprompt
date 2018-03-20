@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <stdio.h>
+#include <errno.h>
 
 #include "git.h"
 #include "capture.h"
@@ -26,8 +28,14 @@ static result_t*
 git_get_info(vccontext_t *context)
 {
     result_t *result = init_result();
+    char cwd[1024];
     char buf[1024];
 
+    if (NULL == getcwd (cwd, sizeof(cwd))) {
+        debug("error getting current working directory: %s", strerror (errno));
+        goto err;        
+    }
+    
     if (isfile(".git") && read_first_line(".git", buf, 1024)) {
         debug(".git is a regular file, assuming a modern git submodule");
         if (strncmp(buf, "gitdir: ", 8) != 0) {
@@ -80,6 +88,10 @@ git_get_info(vccontext_t *context)
             }
         }
     }
+
+    // following stages need to be in the tree, so back out of the .git dir
+    chdir(cwd);
+    
     if (context->options->show_modified) {
         char *argv[] = {
             "git", "diff", "--no-ext-diff", "--quiet", "--exit-code", NULL};

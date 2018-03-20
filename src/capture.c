@@ -197,6 +197,9 @@ capture_child(const char *file, char *const argv[])
     if (result->signal != 0)
         debug("child process %s killed by signal %d",
               file, result->signal);
+    if (result->childout.len > 0)
+        debug("child process %s wrote to stdout:\n%s",
+              file, result->childout.buf);
     if (result->childerr.len > 0)
         debug("child process %s wrote to stderr:\n%s",
               file, result->childerr.buf);
