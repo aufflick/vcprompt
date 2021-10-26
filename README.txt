@@ -21,7 +21,8 @@ To build vcprompt from the source tarball:
   ./configure
   make
 
-If you're building in a source checkout, you also need GNU autoconf:
+If you're building in a source checkout, you also need GNU autoconf
+(you'll probably need older version 2.69):
 
   autoconf
   ./configure
